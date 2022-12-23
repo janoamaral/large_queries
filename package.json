@@ -13,6 +13,8 @@
   "author": "Alejandro Amaral",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2"
+    "axios": "^1.2.1",
+    "express": "^4.18.2",
+    "express-cache-middleware": "^1.0.1"
   }
 }
