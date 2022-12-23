@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+service QuoteService {
+  rpc Get (Empty) returns (QuoteList) {}
+  rpc GetOne (QuoteId) returns (Quote) {}
+}
+
+message Empty {}
+
+message Quote {
+  int32 id = 1;
+  string quote = 2;
+  string author = 3;
+}
+
+message QuoteId {
+  int32 id = 1;
+}
+
+message QuoteList {
+  repeated Quote quotes = 1;
+}
