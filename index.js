@@ -31,7 +31,7 @@ app.get('/api/books', async (req, res, next) => {
   res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
 
   if (query?.length > 10) {
-    return res.status(415).json({
+    return res.status(414).json({
       message: "Query is too long. Use query on POST method",
       postURL: `${req.headers.host}/api/books`
     })
@@ -82,8 +82,22 @@ app.get('/api/books/:queryId', async (req, res, next) => {
   res.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
   if (db.has(query)) {
-    let books = await axios(ENDPOINT + db.get(query))
-    res.status(200).json({ books: books })
+    try {
+      const books = await axios(ENDPOINT + db.get(query))
+
+      res.json(
+        {
+          books: books.data.results
+        }
+      )
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).json({
+        code: 123,
+        message: "Upstream not responding"
+      })
+
+    }
   } else {
     res.status(404).json({
       message: "Query not found. Generate a new one on POST method",
