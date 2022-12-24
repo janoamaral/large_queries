@@ -33,7 +33,7 @@ app.get('/api/books', async (req, res, next) => {
   if (query?.length > 10) {
     return res.status(414).json({
       message: "Query is too long. Use query on POST method",
-      postURL: `${req.headers.host}/api/books`
+      postURL: `http://${req.headers.host}/api/books`
     })
   }
 
@@ -67,12 +67,13 @@ app.post('/api/books', (req, res, next) => {
   }
 
   let queryHash = createHash('sha256').update(query).digest('hex');
+  res.set('Location', `http://${req.headers.host}/api/books/${queryHash}`)
 
   if (db.has(queryHash)) {
-    res.status(200).json({ data: db.get(queryHash) })
+    res.status(200).json({ url: db.get(queryHash) })
   } else {
     db.set(queryHash, query)
-    res.status(201).json({ url: `/api/books/${queryHash}` })
+    res.status(201).json({ url: `http://${req.headers.host}/api/books/${queryHash}` })
   }
 })
 
@@ -101,7 +102,7 @@ app.get('/api/books/:queryId', async (req, res, next) => {
   } else {
     res.status(404).json({
       message: "Query not found. Generate a new one on POST method",
-      postURL: `${req.headers.host}/api/books`
+      postURL: `http://${req.headers.host}/api/books`
     })
   }
 })
