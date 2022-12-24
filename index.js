@@ -7,6 +7,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const ExpressCache = require('express-cache-middleware')
 const cacheManager = require('cache-manager')
 
+
 const cacheMiddleware = new ExpressCache(
   cacheManager.caching({
     store: 'memory', max: 10000, ttl: 3600
@@ -15,12 +16,11 @@ const cacheMiddleware = new ExpressCache(
 
 cacheMiddleware.attach(app)
 
-
-const REST_PORT = 3001
-
 const db = new Map();
 
+const REST_PORT = 3001
 const ENDPOINT = 'https://gutendex.com/books/?search=';
+const QUERY_LIMIT = 10;
 
 // REST endpoints
 
@@ -28,9 +28,9 @@ const ENDPOINT = 'https://gutendex.com/books/?search=';
 app.get('/api/books', async (req, res, next) => {
   let query = req.query?.q;
 
-  res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+  res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
 
-  if (query?.length > 10) {
+  if (query?.length > QUERY_LIMIT) {
     return res.status(414).json({
       message: "Query is too long. Use query on POST method",
       postURL: `http://${req.headers.host}/api/books`
@@ -38,7 +38,7 @@ app.get('/api/books', async (req, res, next) => {
   }
 
   try {
-    const books = await axios(ENDPOINT + query)
+    const books = await axios(ENDPOINT + query);
 
     res.json(
       {
@@ -58,7 +58,7 @@ app.get('/api/books', async (req, res, next) => {
 app.post('/api/books', (req, res, next) => {
   let query = req.body?.q;
 
-  res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+  res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
 
   if (!query) {
     return res.status(400).json({
@@ -66,18 +66,25 @@ app.post('/api/books', (req, res, next) => {
     })
   }
 
+  if (query?.length <= QUERY_LIMIT) {
+    return res.status(400).json({
+      message: "Query is too short. Use query on GET method",
+      url: `http://${req.headers.host}/api/books?q=${query}`
+    })
+  }
+
   let queryHash = createHash('sha256').update(query).digest('hex');
-  res.set('Location', `http://${req.headers.host}/api/books/${queryHash}`)
+  res.set('Location', `http://${req.headers.host}/api/books/query/${queryHash}`);
 
   if (db.has(queryHash)) {
-    res.status(200).json({ url: db.get(queryHash) })
+    res.status(200).json({ url: db.get(queryHash) });
   } else {
-    db.set(queryHash, query)
-    res.status(201).json({ url: `http://${req.headers.host}/api/books/${queryHash}` })
+    db.set(queryHash, query);
+    res.status(201).json({ url: `http://${req.headers.host}/api/books/query/${queryHash}` });
   }
 })
 
-app.get('/api/books/:queryId', async (req, res, next) => {
+app.get('/api/books/query/:queryId', async (req, res, next) => {
   let query = req.params.queryId;
 
   res.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
@@ -102,7 +109,7 @@ app.get('/api/books/:queryId', async (req, res, next) => {
   } else {
     res.status(404).json({
       message: "Query not found. Generate a new one on POST method",
-      postURL: `http://${req.headers.host}/api/books`
+      url: `http://${req.headers.host}/api/books`
     })
   }
 })
