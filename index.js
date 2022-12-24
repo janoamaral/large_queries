@@ -4,28 +4,22 @@ const app = express()
 const axios = require('axios');
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: true }));
-const ExpressCache = require('express-cache-middleware')
-const cacheManager = require('cache-manager')
 
+const cacheService = require("express-api-cache");
+const cache = cacheService.cache;
 
-const cacheMiddleware = new ExpressCache(
-  cacheManager.caching({
-    store: 'memory', max: 10000, ttl: 3600
-  })
-)
-
-cacheMiddleware.attach(app)
 
 const db = new Map();
 
 const REST_PORT = 3001
 const ENDPOINT = 'https://gutendex.com/books/?search=';
 const QUERY_LIMIT = 10;
+const QUERY_STORAGE_LIMIT = 3;
 
 // REST endpoints
 
 // 
-app.get('/api/books', async (req, res, next) => {
+app.get('/api/books', cache("2 minutes"), async (req, res, next) => {
   let query = req.query?.q;
 
   res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -77,14 +71,19 @@ app.post('/api/books', (req, res, next) => {
   res.set('Location', `http://${req.headers.host}/api/books/query/${queryHash}`);
 
   if (db.has(queryHash)) {
-    res.status(200).json({ url: db.get(queryHash) });
+    res.status(200).json({ url: `http://${req.headers.host}/api/books/query/${queryHash}` });
   } else {
+
+    if (db.size >= QUERY_STORAGE_LIMIT) {
+      db.delete(db.entries().next().value[0])
+    }
+
     db.set(queryHash, query);
     res.status(201).json({ url: `http://${req.headers.host}/api/books/query/${queryHash}` });
   }
 })
 
-app.get('/api/books/query/:queryId', async (req, res, next) => {
+app.get('/api/books/query/:queryId', cache("2 minutes"), async (req, res, next) => {
   let query = req.params.queryId;
 
   res.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
