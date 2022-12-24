@@ -2,8 +2,8 @@ const express = require('express')
 const { createHash } = require('crypto');
 const app = express()
 const axios = require('axios');
-const bodyParser = require('body-parser');
-app.use(bodyParser.urlencoded({ extended: true }));
+
+app.use(express.json())
 
 const cacheService = require("express-api-cache");
 const cache = cacheService.cache;
@@ -22,12 +22,12 @@ const QUERY_STORAGE_LIMIT = 3;
 app.get('/api/books', cache("2 minutes"), async (req, res, next) => {
   let query = req.query?.q;
 
-  res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
 
   if (query?.length > QUERY_LIMIT) {
     return res.status(414).json({
       message: "Query is too long. Use query on POST method",
-      postURL: `http://${req.headers.host}/api/books`
+      url: `http://${req.headers.host}/api/books/query`
     })
   }
 
@@ -49,7 +49,7 @@ app.get('/api/books', cache("2 minutes"), async (req, res, next) => {
   }
 })
 
-app.post('/api/books', (req, res, next) => {
+app.post('/api/books/query', (req, res, next) => {
   let query = req.body?.q;
 
   res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -86,7 +86,7 @@ app.post('/api/books', (req, res, next) => {
 app.get('/api/books/query/:queryId', cache("2 minutes"), async (req, res, next) => {
   let query = req.params.queryId;
 
-  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
 
   if (db.has(query)) {
     try {
@@ -108,7 +108,7 @@ app.get('/api/books/query/:queryId', cache("2 minutes"), async (req, res, next) 
   } else {
     res.status(404).json({
       message: "Query not found. Generate a new one on POST method",
-      url: `http://${req.headers.host}/api/books`
+      url: `http://${req.headers.host}/api/books/query`
     })
   }
 })
